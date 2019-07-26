@@ -13,14 +13,6 @@ Globals:
     Environment:
       Variables:
         AIRTABLE_KEY: key3tgXMZ5FNkZZ98
-        PROBLEM_TABLE_ID: tblhqeLMkgizweQfk
-        PROBLEM_HISTORY_TABLE_ID: tbly11xGCTbbVO0Np
-        ORGANIZATION_TABLE_ID: tblsQidDARIrdiMoZ
-        GROUP_TABLE_ID: tblWGBG5AeRcuFtoh
-        SUBGROUP_TABLE_ID: tblMXektRgNyI186q
-        PEOPLE_TABLE_ID: tbl7vBHWmZ772lCmH
-        DOCUMENTS_TABLE_ID: tblAjIzEgR9DMbahK
-        TOOL_ANALYTICS_TABLE_ID: tblBV4S4sOqwRxcAY
 
 Resources:
   submitSourcedRetoolProblem:

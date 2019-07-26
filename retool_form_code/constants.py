@@ -1,3 +1,15 @@
+# Airtable API
+AIRTABLE_BASE_KEY = 'appHXQWL4nSnCyifT'
+PROBLEM_TABLE_ID = 'tblhqeLMkgizweQfk'
+PROBLEM_HISTORY_TABLE_ID = 'tbly11xGCTbbVO0Np'
+ORGANIZATION_TABLE_ID = 'tblsQidDARIrdiMoZ'
+GROUP_TABLE_ID = 'tblWGBG5AeRcuFtoh'
+SUBGROUP_TABLE_ID = 'tblMXektRgNyI186q'
+PEOPLE_TABLE_ID = 'tbl7vBHWmZ772lCmH'
+DOCUMENTS_TABLE_ID = 'tblAjIzEgR9DMbahK'
+TOOL_ANALYTICS_TABLE_ID = 'tblBV4S4sOqwRxcAY'
+
+# Table Fields
 ALL_SOURCED_FIELDS = [
     'pre_2019',
     'employee_sourced_curated',
@@ -72,3 +84,17 @@ REQUIRED_CURATED_FIELDS = [
     'processes',
     'State'
 ]
+
+# Sourced Problem Error Responses
+INVALID_FIELD = 'Entered invalid field {} for table {}. Please check the data to make sure fields match with airtable'
+REQUIRED_FIELD_IS_NULL = "The required field {} was left blank in the {} form"
+UNABLE_TO_CREATE_RECORD = "Unable to create record. Message: {}"
+
+# Other
+STATE_TO_PIPELINE = {
+    'Sourced (no BMNT)': 'Source',
+    '10% Curated (BMNT tool)': 'Curate',
+    '20%-40% Curated (BMNT tool, little help)': 'Discover',
+    '40%-80% Curated (Curation call)': 'Incubate',
+    '100% Curated (Discovery Workshop)': 'Transition'
+}
