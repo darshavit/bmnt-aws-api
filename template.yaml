@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  AWS
+
+  Sample SAM Template for AWS
+
+Globals:
+  Function:
+    Runtime: python3.7
+    Timeout: 10
+    CodeUri: retool_form_code/
+    Environment:
+      Variables:
+        AIRTABLE_KEY: key3tgXMZ5FNkZZ98
+        PROBLEM_TABLE_ID: tblhqeLMkgizweQfk
+        PROBLEM_HISTORY_TABLE_ID: tbly11xGCTbbVO0Np
+        ORGANIZATION_TABLE_ID: tblsQidDARIrdiMoZ
+        GROUP_TABLE_ID: tblWGBG5AeRcuFtoh
+        SUBGROUP_TABLE_ID: tblMXektRgNyI186q
+        PEOPLE_TABLE_ID: tbl7vBHWmZ772lCmH
+        DOCUMENTS_TABLE_ID: tblAjIzEgR9DMbahK
+        TOOL_ANALYTICS_TABLE_ID: tblBV4S4sOqwRxcAY
+
+Resources:
+  submitSourcedRetoolProblem:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.sourced_problem_handler
+      Events:
+        SourcedProblem:
+          Type: Api
+          Properties:
+            Path: /submitSourcedProblem
+            Method: POST
+  submitCuratedRetoolProblem:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.curated_problem_handler
+      Events:
+        CuratedProblem:
+          Type: Api
+          Properties:
+            Path: /submitCuratedProblem
+            Method: POST
+  submitUpdatedRetoolProblem:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.updated_problem_handler
+      Events:
+        UpdatedProblem:
+          Type: Api
+          Properties:
+            Path: /submitUpdatedProblem
+            Method: POST
+
