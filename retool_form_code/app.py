@@ -106,6 +106,7 @@ def curated_problem_handler(event, context):
                                             'Problems',
                                             'sourced problem',
                                             constants.REQUIRED_CURATED_FIELDS)
+    data_problem.pop('State')
     if 'statusCode' in data_problem:
         logger.warning(data_problem['body'])
         return data_problem
@@ -119,9 +120,9 @@ def curated_problem_handler(event, context):
     ################# PROBLEM HISTORY TABLE SUBMIT #################
     data_problem_history = {
         'Problem Statement': data_problem['problem_statement'],
-        'State': data_problem['State'],
+        'State': raw_data['cp_State'],
         'Problem ID': [new_problem_id],
-        'Pipeline Stage': constants.STATE_TO_PIPELINE[data_problem['State']]
+        'Pipeline Stage': constants.STATE_TO_PIPELINE[raw_data['cp_State']],
         'date_curated': str(datetime.date.today())
     }
     rec_problem_history = submit_to_airtable(data_problem_history, 'Problem History')
