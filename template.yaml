@@ -15,25 +15,15 @@ Globals:
         AIRTABLE_KEY: key3tgXMZ5FNkZZ98
 
 Resources:
-  submitSourcedRetoolProblem:
+  submitNewRetoolProblem:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: app.sourced_problem_handler
-      Events:
-        SourcedProblem:
-          Type: Api
-          Properties:
-            Path: /submitSourcedProblem
-            Method: POST
-  submitCuratedRetoolProblem:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: app.curated_problem_handler
+      Handler: app.submit_problem_handler
       Events:
         CuratedProblem:
           Type: Api
           Properties:
-            Path: /submitCuratedProblem
+            Path: /submitRetoolProblem
             Method: POST
   submitUpdatedRetoolProblem:
     Type: AWS::Serverless::Function
@@ -43,6 +33,6 @@ Resources:
         UpdatedProblem:
           Type: Api
           Properties:
-            Path: /submitUpdatedProblem
+            Path: /updateRetoolProblem
             Method: POST
 

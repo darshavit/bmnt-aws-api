@@ -9,6 +9,26 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
+def separate_data(raw_data, problem_type):
+    problem_data = {}
+    problem_history_data = {}
+    subgroup_data = {}
+    people_data = {}
+
+    logger.info('## Organizing Raw data from retool')
+    for field, value in raw_data.items():
+        if field in constants.ALL_FIELDS[problem_type]:
+            problem_data[field] = value
+        if field in constants.ALL_FIELDS['problem_history']:
+            problem_history_data[field] = value
+        if field in constants.ALL_FIELDS['subgroup']:
+            subgroup_data[field] = value
+        if field in constants.ALL_FIELDS['people']:
+            people_data[field] = value
+    logger.info('## Organized data by table')
+    return problem_data, problem_history_data, subgroup_data, people_data
+
+
 def check_data_from_retool(data, all_fields, table_name, form, required_fields=None):
     """
     Serves as a sanity check for the data from a retool form.
@@ -34,7 +54,7 @@ def check_data_from_retool(data, all_fields, table_name, form, required_fields=N
                 })
             }
         # Make sure required field is not empty
-        if required_fields is not None:
+        if required_fields:
             if field in required_fields:
                 if not value:
                     logger.warning(constants.REQUIRED_FIELD_IS_NULL.format(field, form))
@@ -135,12 +155,13 @@ def submit_to_problem_table(data, problem_type):
 def submit_to_problem_history_table(data, problem_id, problem_type):
     data_problem_history = {
         'Problem Statement': data['problem_statement'],
-        'Problem ID': problem_id
+        'Problem ID': [problem_id]
     }
-    if problem_type is 'sourced':
+    if problem_type == 'sourced':
         data_problem_history['State'] = 'Sourced (no BMNT)'
         data_problem_history['Pipeline Stage'] = constants.STATE_TO_PIPELINE['Sourced (no BMNT)']
-    elif problem_type is 'curated':
+        logger.info(data_problem_history)
+    elif problem_type == 'curated':
         data_problem_history['State'] = data['State']
         data_problem_history['Pipeline Stage'] = constants.STATE_TO_PIPELINE[data['State']]
 
@@ -168,11 +189,13 @@ def handle_subgroup_logic(data, problem_id):
         if 'statusCode' in rec_subgroup:
             return False, rec_subgroup
 
-        problem_update_data = {'physical_location': existing_subgroup_data['id']}
+        problem_update_data = {'physical_location': [existing_subgroup_data['id']]}
         if 'Group' in existing_subgroup_data:
             problem_update_data['Group'] = existing_subgroup_data['Group']
-        if 'Organization' in existing_subgroup_data:
-            problem_update_data['Organization'] = existing_subgroup_data['Organization']
+        # if 'Organization' in existing_subgroup_data:
+        #     problem_update_data['Organization'] = existing_subgroup_data['Organization']
+        #     org_table = Airtable(constants.AIRTABLE_BASE_KEY, 'Organization', api_key=os.environ['AIRTABLE_KEY'])
+        #     problem_update_data['sponsor_org'] = org_table.get(existing_subgroup_data['Organization'])['Name']
 
         # Update problem to include these links
         rec_problem = update_in_airtable(problem_id, 'Problems', problem_update_data)
@@ -181,29 +204,59 @@ def handle_subgroup_logic(data, problem_id):
         return True, existing_subgroup_data
 
     # New subgroup entry
-    elif data['sponsor_org']:
+    elif 'sponsor_org' in data:
         logger.info('Creating new subgroup entry: {}'.format(data['sponsor_org']))
         data_subgroup = {
-            'Name': data['sp_sponsor_org'],
+            'Name': data['sponsor_org'],
             'Problems': [problem_id]
         }
-        if data['physical_location']:
+        if 'physical_location' in data:
             if ',' in data['physical_location']:
-                city, state = data['physical_location'].split()
+                city, state = data['physical_location'].split(',')
                 if city:
-                    data_subgroup['City'] = city
+                    data_subgroup['City'] = city.strip()
                 if state:
-                    data_subgroup['State'] = state
+                    data_subgroup['State'] = state.strip()
             elif '-' in data['sp_physical_location']:
                 data_subgroup['State'] = data['physical_location']
         rec_subgroup = submit_to_airtable(data_subgroup, 'Sub Group')
         if 'statusCode' in rec_subgroup:
             return False, rec_subgroup
-        rec_problem = update_in_airtable(problem_id, 'Problems', {'physical_location': rec_subgroup['id']})
-        if 'statusCode' in rec_problem:
-            return False, rec_problem
-
         return True, rec_subgroup
+
+    return True, None
+
+
+def handle_people_logic(data, problem_id, rec_subgroup):
+    people_table = Airtable(constants.AIRTABLE_BASE_KEY, 'People', api_key=os.environ['AIRTABLE_KEY'])
+    data_people = people_table.search('email', data['sponsor_email'])
+    if len(data_people):
+        people_update_data = {}
+        if 'Problems' in data_people:
+            people_update_data['Problems'] = data_people['Problems'].append(problem_id)
+        else:
+            people_update_data['Problems'] = [problem_id]
+        rec_people = update_in_airtable(data_people['id'], 'People', people_update_data)
+        if 'statusCode' in rec_people:
+            return False, rec_people
+        return True, rec_people
+    else:
+        data_people = {'email': data['sponsor_email']}
+        if len(data['sponsor_name']) > 1:
+            data_people['first_name'] = data['sponsor_name'].split()[0]
+            data_people['last_name'] = data['sponsor_name'].split()[1]
+        else:
+            data_people['first_name'] = data['sponsor_name']
+        if 'Group' in rec_subgroup:
+            data_people['Group'] = rec_subgroup['Group']
+        data_people['Sub Group'] = [rec_subgroup['id']]
+        data_people['Problems'] = [problem_id]
+        if 'sponsor_division' in data:
+            data_people['Division'] = data['sponsor_division']
+        rec_people = submit_to_airtable(data_people, 'People')
+        if 'statusCode' in rec_people:
+            return False, rec_people
+        return True, rec_people
 
 
 def submit_problem_handler(event, context):
@@ -218,140 +271,39 @@ def submit_problem_handler(event, context):
     """
     raw_data = event['body']
     problem_type = raw_data['problem_type']
+    problem_data, problem_history_data, subgroup_data, people_data = separate_data(raw_data, problem_type)
 
     # Problem Table Submit
-    success, rec_problem = submit_to_problem_table(raw_data, problem_type)
+    success, rec_problem = submit_to_problem_table(problem_data, problem_type)
     if not success:
         return rec_problem
 
     # Problem History Submit
-    success, rec_problem_history = submit_to_problem_history_table(raw_data, rec_problem['id'], problem_type)
+    success, rec_problem_history = submit_to_problem_history_table(problem_history_data, rec_problem['id'], problem_type)
     if not success:
-        delete_from_airtable(rec_problem['id'], 'Problems')
+        # delete_from_airtable(rec_problem['id'], 'Problems')
         return rec_problem_history
-    ################# PROBLEM HISTORY TABLE SUBMIT #################
 
-    ################# SUB GROUP TABLE LOGIC #################
-    subgroup_table = Airtable(constants.AIRTABLE_BASE_KEY, 'Sub Group', api_key=os.environ['AIRTABLE_KEY'])
-    # Subgroup already exists
-    if raw_data['sponsor_subgroup']:
-        logger.info('Using existing subgroup {}'.format(raw_data['sponsor_subgroup']))
-        existing_subgroup_data = subgroup_table.get(raw_data['sponsor_subgroup'])
-        subgroup_update_data = {}
-        if 'Problems' in existing_subgroup_data:
-            subgroup_update_data['Problems'] = existing_subgroup_data['Problems'].append(rec_problem['id'])
-        else:
-            subgroup_update_data['Problems'] = [rec_problem['id']]
-        update_in_airtable(existing_subgroup_data['id'], 'Sub Group', subgroup_update_data)
-        problem_update_data = {'physical_location': existing_subgroup_data['id']}
-        if 'Group' in existing_subgroup_data:
-            problem_update_data['Group'] = existing_subgroup_data['Group']
-        if 'Organization' in existing_subgroup_data:
-            problem_update_data['Organization'] = existing_subgroup_data['Organization']
-        # Update problem to include these links
-        rec_problem = update_in_airtable(rec_problem['id'], 'Problems', problem_update_data)
-        if 'statusCode' in rec_problem:
-            logger.warning(rec_problem['body'])
-            return rec_problem
-    # New subgroup entry
-    elif raw_data['sponsor_org']:
-        logger.info('Creating new subgroup entry: {}'.format(raw_data['sponsor_org']))
-        data_subgroup = {
-            'Name': raw_data['sp_sponsor_org'],
-            'Problems': [rec_problem['id']]
-        }
-        if raw_data['physical_location']:
-            if ',' in raw_data['physical_location']:
-                city, state = raw_data['physical_location'].split()
-                if city:
-                    data_subgroup['City'] = city
-                if state:
-                    data_subgroup['State'] = state
-            elif '-' in raw_data['sp_physical_location']:
-                data_subgroup['State'] = raw_data['physical_location']
-        rec_subgroup = submit_to_airtable(data_subgroup, 'Sub Group')
-        if 'statusCode' in rec_subgroup:
-            logger.warning(rec_subgroup['body'])
-            return rec_subgroup
-        rec_problem = update_in_airtable(rec_problem['id'], 'Problems', {'physical_location': rec_subgroup['id']})
-        if 'statusCode' in rec_problem:
-            logger.warning(rec_subgroup['body'])
-            return rec_subgroup
-    ################# SUB GROUP TABLE LOGIC #################
+    # Subgroup Logic
+    success, rec_subgroup = handle_subgroup_logic(subgroup_data, rec_problem['id'])
+    if not success:
+        # delete_from_airtable(rec_problem['id'], 'Problems')
+        # delete_from_airtable(rec_problem_history['id'], 'Problem History')
+        return rec_subgroup
 
-    ################# PEOPLE TABLE LOGIC #################
-    people_table = Airtable(constants.AIRTABLE_BASE_KEY, 'People', api_key=os.environ['AIRTABLE_KEY'])
-    data_people = people_table.search('email', raw_data['sponsor_email'])
-    if len(people_table.search('email', raw_data['sponsor_email'])):
-        people_update_data = {}
-        if 'Problems' in data_people:
-            people_update_data['Problems'] = data_people['Problems'].append(rec_problem['id'])
-        else:
-            people_update_data['Problems'] = [rec_problem['id']]
-        update_in_airtable(data_people['id'], 'People', people_update_data)
-    else:
-        data_people = {}
-        if len(raw_data['sponsor_name']) > 1:
-            data_people['first_name'] = raw_data['sponsor_name'].split()[0]
-            data_people['last_name'] = raw_data['sponsor_name'].split()[1]
-        else:
-            data_people['first_name'] = raw_data['sponsor_name']
-        if 'Organization' in rec_subgroup:
-            data_people['Organization'] = rec_subgroup['Organization']
-        if 'Group' in rec_subgroup:
-            data_people['Group'] = rec_subgroup['Group']
-        data_people['Sub Group'] = rec_subgroup['id']
-        data_people['Problems'] = [rec_problem['id']]
-        if 'sponsor_division' in raw_data:
-            data_people['Division'] = raw_data['sponsor_division']
-
+    # People Logic
+    success, rec_people = handle_people_logic(people_data, rec_problem['id'], rec_subgroup)
+    if not success:
+        # delete_from_airtable(rec_problem['id'], 'Problems')
+        # delete_from_airtable(rec_problem_history['id'], 'Problem History')
+        return rec_people
 
     return {
         'statusCode': 200,
         'body': json.dumps({
-            'message': 'sourced problem'
-        })
-    }
-
-
-def curated_problem_handler(event, context):
-    logger.info('## Processing curated problem submit')
-    raw_data = event['body']
-
-    ################# PROBLEM TABLE SUBMIT #################
-    data_problem = check_data_from_retool(raw_data,
-                                          constants.ALL_CURATED_UPDATED_FIELDS,
-                                          'Problems',
-                                          'sourced problem',
-                                          constants.REQUIRED_CURATED_FIELDS)
-    data_problem.pop('State')
-    if 'statusCode' in data_problem:
-        logger.warning(data_problem['body'])
-        return data_problem
-
-    rec_problem = submit_to_airtable(data_problem, 'Problems')
-    if 'id' not in rec_problem:
-        return rec_problem
-    new_problem_id = rec_problem['id']
-    ################# PROBLEM TABLE SUBMIT #################
-
-    ################# PROBLEM HISTORY TABLE SUBMIT #################
-    data_problem_history = {
-        'Problem Statement': data_problem['problem_statement'],
-        'State': raw_data['cp_State'],
-        'Problem ID': [new_problem_id],
-        'Pipeline Stage': constants.STATE_TO_PIPELINE[raw_data['cp_State']],
-        'date_curated': str(datetime.date.today())
-    }
-    rec_problem_history = submit_to_airtable(data_problem_history, 'Problem History')
-    if 'id' not in rec_problem_history:
-        return rec_problem_history
-    new_problem_history_id = rec_problem_history['id']
-    ################# PROBLEM HISTORY TABLE SUBMIT #################
-    return {
-        "statusCode": 200,
-        "body": json.dumps({
-            "message": "curated problem"
+            'message': 'sourced problem submitted successfully',
+            'link': 'Link to problem in airtable: <a href=https://airtable.com/{}/{}'.format(
+                constants.PROBLEM_TABLE_ID, rec_problem['id'])
         })
     }
 

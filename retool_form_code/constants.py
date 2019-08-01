@@ -23,14 +23,13 @@ ALL_FIELDS = {
                 'sponsor_title',
                 'sponsor_division',
                 'sponsor_org',
-                'sponsor_subgroup',
-                'physical_location',
                 'sponsor_email',
                 'senior_leader_name',
                 'senior_leader_rank',
                 'senior_leader_title',
                 'senior_leader_division',
-                'senior_leader_email'],
+                'senior_leader_email'
+                ],
     'curated': ['pre_2019',
                 'program',
                 'employee_sourced_curated',
@@ -52,7 +51,6 @@ ALL_FIELDS = {
                 'senior_leader_title',
                 'senior_leader_division',
                 'senior_leader_email',
-                'physical_location',
                 'elements',
                 'processes',
                 'setting',
@@ -62,8 +60,18 @@ ALL_FIELDS = {
                 'frequency',
                 'cost',
                 'humans_impacted',
-                'org_threat',
-                'State']
+                'org_threat'
+                ],
+    'problem_history': ['problem_statement',
+                        'State'
+                        ],
+    'subgroup': ['sponsor_org',
+                 'sponsor_subgroup',
+                 'physical_location'],
+    'people': ['sponsor_email',
+               'sponsor_name',
+               'sponsor_division'
+               ]
 }
 
 REQUIRED_FIELDS = {
