@@ -10,85 +10,82 @@ DOCUMENTS_TABLE_ID = 'tblAjIzEgR9DMbahK'
 TOOL_ANALYTICS_TABLE_ID = 'tblBV4S4sOqwRxcAY'
 
 # Table Fields
-ALL_SOURCED_FIELDS = [
-    'pre_2019',
-    'employee_sourced_curated',
-    'program',
-    'source_activity',
-    'problem_title',
-    'problem_statement',
-    'background',
-    'sponsor_name',
-    'sponsor_rank',
-    'sponsor_title',
-    'sponsor_division',
-    'sponsor_org',
-    'sponsor_email',
-    'senior_leader_name',
-    'senior_leader_rank',
-    'senior_leader_title',
-    'senior_leader_division',
-    'senior_leader_email'
-]
+ALL_FIELDS = {
+    'sourced': ['pre_2019',
+                'employee_sourced_curated',
+                'program',
+                'source_activity',
+                'problem_title',
+                'problem_statement',
+                'background',
+                'sponsor_name',
+                'sponsor_rank',
+                'sponsor_title',
+                'sponsor_division',
+                'sponsor_org',
+                'sponsor_subgroup',
+                'physical_location',
+                'sponsor_email',
+                'senior_leader_name',
+                'senior_leader_rank',
+                'senior_leader_title',
+                'senior_leader_division',
+                'senior_leader_email'],
+    'curated': ['pre_2019',
+                'program',
+                'employee_sourced_curated',
+                'problem_title',
+                'background',
+                'problem_statement',
+                'beneficiary',
+                'basic_need',
+                'desired_outcome',
+                'constraints',
+                'sponsor_name',
+                'sponsor_rank',
+                'sponsor_title',
+                'sponsor_division',
+                'sponsor_org',
+                'sponsor_email',
+                'senior_leader_name',
+                'senior_leader_rank',
+                'senior_leader_title',
+                'senior_leader_division',
+                'senior_leader_email',
+                'physical_location',
+                'elements',
+                'processes',
+                'setting',
+                'roles',
+                'data',
+                'team_impact',
+                'frequency',
+                'cost',
+                'humans_impacted',
+                'org_threat',
+                'State']
+}
 
-REQUIRED_SOURCED_FIELDS = [
-    'problem_title',
-    'problem_statement',
-    'sponsor_name',
-    'sponsor_email'
-]
-
-ALL_CURATED_UPDATED_FIELDS = [
-    'pre_2019',
-    'program',
-    'employee_sourced_curated',
-    'problem_title',
-    'background',
-    'problem_statement',
-    'beneficiary',
-    'basic_need',
-    'desired_outcome',
-    'constraints',
-    'sponsor_name',
-    'sponsor_rank',
-    'sponsor_title',
-    'sponsor_division',
-    'sponsor_org',
-    'sponsor_email',
-    'senior_leader_name',
-    'senior_leader_rank',
-    'senior_leader_title',
-    'senior_leader_division',
-    'senior_leader_email',
-    'physical_location',
-    'elements',
-    'processes',
-    'setting',
-    'roles',
-    'data',
-    'team_impact',
-    'frequency',
-    'cost',
-    'humans_impacted',
-    'org_threat',
-    'State'
-]
-
-REQUIRED_CURATED_FIELDS = [
-    'program',
-    'problem_title',
-    'problem_statement',
-    'sponsor_name',
-    'sponsor_email',
-    'elements',
-    'processes',
-    'State'
-]
+REQUIRED_FIELDS = {
+    'sourced': ['problem_title',
+                'problem_statement',
+                'sponsor_name',
+                'sponsor_email'],
+    'curated': ['program',
+                'problem_title',
+                'problem_statement',
+                'sponsor_name',
+                'sponsor_email',
+                'elements',
+                'processes',
+                'State']
+}
 
 # Sourced Problem Error Responses
 INVALID_FIELD = 'Entered invalid field {} for table {}. Please check the data to make sure fields match with airtable'
 REQUIRED_FIELD_IS_NULL = "The required field {} was left blank in the {} form"
 UNABLE_TO_CREATE_RECORD = "Unable to create record. Message: {}"
+UNABLE_TO_UPDATE_RECORD = "Unable to update record {}. Message: {}"
 
 # Other
 STATE_TO_PIPELINE = {
