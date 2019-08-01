@@ -10,6 +10,12 @@ logger.setLevel(logging.INFO)
 
 
 def separate_data(raw_data, problem_type):
+    """
+    separates the raw data from retool into separate dicts for the various tables
+    :param raw_data: data from retool
+    :param problem_type: sourced/curated
+    :return:
+    """
     problem_data = {}
     problem_history_data = {}
     subgroup_data = {}
@@ -164,6 +170,7 @@ def submit_to_problem_history_table(data, problem_id, problem_type):
     elif problem_type == 'curated':
         data_problem_history['State'] = data['State']
         data_problem_history['Pipeline Stage'] = constants.STATE_TO_PIPELINE[data['State']]
+        data_problem_history['date_curated'] = str(datetime.date.today())
 
     rec_problem_history = submit_to_airtable(data_problem_history, 'Problem History')
     if 'statusCode' in rec_problem_history:
@@ -180,27 +187,28 @@ def handle_subgroup_logic(data, problem_id):
         logger.info('Using existing subgroup {}'.format(data['sponsor_subgroup']))
         existing_subgroup_data = subgroup_table.get(data['sponsor_subgroup'])
         subgroup_update_data = {}
-
-        if 'Problems' in existing_subgroup_data:
-            subgroup_update_data['Problems'] = existing_subgroup_data['Problems'].append(problem_id)
+        # Add Problem to subgroup based on whether subgroup is already associated with problems
+        if 'Problems' in existing_subgroup_data['fields']:
+            subgroup_update_data['Problems'] = existing_subgroup_data['fields']['Problems']
+            subgroup_update_data['Problems'].append(problem_id)
         else:
             subgroup_update_data['Problems'] = [problem_id]
+
         rec_subgroup = update_in_airtable(existing_subgroup_data['id'], 'Sub Group', subgroup_update_data)
         if 'statusCode' in rec_subgroup:
             return False, rec_subgroup
+        # Add Group and Organization to Problem if needed
+        if 'Group' in existing_subgroup_data['fields']:
+            problem_update_data = {'Group': existing_subgroup_data['fields']['Group']}
+            group_table = Airtable(constants.AIRTABLE_BASE_KEY, 'Group', api_key=os.environ['AIRTABLE_KEY'])
+            rec_group = group_table.get(existing_subgroup_data['fields']['Group'][0])
+            if 'Organization' in rec_group['fields']:
+                problem_update_data['Organization'] = rec_group['fields']['Organization']
 
-        problem_update_data = {'physical_location': [existing_subgroup_data['id']]}
-        if 'Group' in existing_subgroup_data:
-            problem_update_data['Group'] = existing_subgroup_data['Group']
-        # if 'Organization' in existing_subgroup_data:
-        #     problem_update_data['Organization'] = existing_subgroup_data['Organization']
-        #     org_table = Airtable(constants.AIRTABLE_BASE_KEY, 'Organization', api_key=os.environ['AIRTABLE_KEY'])
-        #     problem_update_data['sponsor_org'] = org_table.get(existing_subgroup_data['Organization'])['Name']
+            rec_problem = update_in_airtable(problem_id, 'Problems', problem_update_data)
+            if 'statusCode' in rec_problem:
+                return False, rec_problem
 
-        # Update problem to include these links
-        rec_problem = update_in_airtable(problem_id, 'Problems', problem_update_data)
-        if 'statusCode' in rec_problem:
-            return False, rec_problem
         return True, existing_subgroup_data
 
     # New subgroup entry
@@ -210,6 +218,7 @@ def handle_subgroup_logic(data, problem_id):
             'Name': data['sponsor_org'],
             'Problems': [problem_id]
         }
+        # Handle city,state or international physical location
         if 'physical_location' in data:
             if ',' in data['physical_location']:
                 city, state = data['physical_location'].split(',')
@@ -219,6 +228,7 @@ def handle_subgroup_logic(data, problem_id):
                     data_subgroup['State'] = state.strip()
             elif '-' in data['sp_physical_location']:
                 data_subgroup['State'] = data['physical_location']
+
         rec_subgroup = submit_to_airtable(data_subgroup, 'Sub Group')
         if 'statusCode' in rec_subgroup:
             return False, rec_subgroup
@@ -230,25 +240,64 @@ def handle_subgroup_logic(data, problem_id):
 def handle_people_logic(data, problem_id, rec_subgroup):
     people_table = Airtable(constants.AIRTABLE_BASE_KEY, 'People', api_key=os.environ['AIRTABLE_KEY'])
     data_people = people_table.search('email', data['sponsor_email'])
+    # Existing Person
     if len(data_people):
         people_update_data = {}
-        if 'Problems' in data_people:
-            people_update_data['Problems'] = data_people['Problems'].append(problem_id)
+        logger.info(data_people)
+        # Add this problem to this person based on whether they are already associated with problems
+        if 'Problems' in data_people[0]['fields']:
+            people_update_data['Problems'] = data_people[0]['fields']['Problems']
+            people_update_data['Problems'].append(problem_id)
         else:
             people_update_data['Problems'] = [problem_id]
-        rec_people = update_in_airtable(data_people['id'], 'People', people_update_data)
+        # Add subgroup/group/org to person if needed
+        if 'Sub Group' in data_people[0]['fields']:
+            if rec_subgroup['id'] not in data_people[0]['fields']['Sub Group']:
+                people_update_data['Sub Group'] = data_people[0]['fields']['Sub Group']
+                people_update_data['Sub Group'].append(rec_subgroup['id'])
+            if 'Group' in rec_subgroup['fields']:
+                if 'Group' not in data_people[0]['fields']:
+                    people_update_data['Group'] = rec_subgroup['fields']['Group']
+                else:
+                    people_update_data['Group'] = data_people[0]['fields']['Group']
+                    for grp in rec_subgroup['fields']['Group']:
+                        if grp not in people_update_data['Group']:
+                            people_update_data['Group'].append(grp)
+                group_table = Airtable(constants.AIRTABLE_BASE_KEY, 'Group', api_key=os.environ['AIRTABLE_KEY'])
+                if 'Organization' in data_people[0]['fields']:
+                    people_update_data['Organization'] = data_people[0]['fields']['Organization']
+                else:
+                    people_update_data['Organization'] = []
+                for grp in people_update_data['Group']:
+                    rec_group = group_table.get(grp)
+                    if 'Organization' in rec_group['fields']:
+                        for org in rec_group['fields']['Organization']:
+                            if org not in people_update_data['Organization']:
+                                people_update_data['Organization'].append(org)
+                if not people_update_data['Organization']:
+                    people_update_data.pop('Organization')
+        rec_people = update_in_airtable(data_people[0]['id'], 'People', people_update_data)
         if 'statusCode' in rec_people:
             return False, rec_people
         return True, rec_people
     else:
         data_people = {'email': data['sponsor_email']}
-        if len(data['sponsor_name']) > 1:
-            data_people['first_name'] = data['sponsor_name'].split()[0]
-            data_people['last_name'] = data['sponsor_name'].split()[1]
+        if len(data['sponsor_name'].split(' ', 1)) > 1:
+            data_people['first_name'] = data['sponsor_name'].split(' ', 1)[0]
+            data_people['last_name'] = data['sponsor_name'].split(' ', 1)[1]
         else:
             data_people['first_name'] = data['sponsor_name']
-        if 'Group' in rec_subgroup:
-            data_people['Group'] = rec_subgroup['Group']
+        if 'Group' in rec_subgroup['fields']:
+            data_people['Group'] = rec_subgroup['fields']['Group']
+            group_table = Airtable(constants.AIRTABLE_BASE_KEY, 'Group', api_key=os.environ['AIRTABLE_KEY'])
+            data_people['Organization'] = []
+            for grp in data_people['Group']:
+                rec_group = group_table.get(grp)
+                if 'Organization' in rec_group['fields']:
+                    for org in rec_group['fields']['Organization']:
+                        if org not in data_people['Organization']:
+                            data_people['Organization'].append(org)
+
         data_people['Sub Group'] = [rec_subgroup['id']]
         data_people['Problems'] = [problem_id]
         if 'sponsor_division' in data:
