@@ -1,10 +1,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: >
-  AWS
+Description: 'AWS
 
   Sample SAM Template for AWS
 
+  '
 Globals:
   Function:
     Runtime: python3.7
@@ -13,7 +13,6 @@ Globals:
     Environment:
       Variables:
         AIRTABLE_KEY: key3tgXMZ5FNkZZ98
-
 Resources:
   submitNewRetoolProblem:
     Type: AWS::Serverless::Function
@@ -25,6 +24,7 @@ Resources:
           Properties:
             Path: /submitRetoolProblem
             Method: POST
+      CodeUri: s3://bmnt-retool-code-bucket/e0e4029b474d9f832782896896c742b3
   submitUpdatedRetoolProblem:
     Type: AWS::Serverless::Function
     Properties:
@@ -35,14 +35,21 @@ Resources:
           Properties:
             Path: /updateRetoolProblem
             Method: POST
-
+      CodeUri: s3://bmnt-retool-code-bucket/e0e4029b474d9f832782896896c742b3
 Outputs:
   BMNTRetoolAPI:
-    Description: "Endpoints for BMNT form logic"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+    Description: Endpoints for BMNT form logic
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/
   submitNewRetoolProblem:
-    Description: "Submit New Problem ARN"
-    Value: !GetAtt submitNewRetoolProblem.Arn
+    Description: Submit New Problem ARN
+    Value:
+      Fn::GetAtt:
+      - submitNewRetoolProblem
+      - Arn
   submitUpdatedRetoolProblem:
-    Description: "Update Existing Problem ARN"
-    Value: !GetAtt submitUpdatedRetoolProblem.Arn
+    Description: Update Existing Problem ARN
+    Value:
+      Fn::GetAtt:
+      - submitUpdatedRetoolProblem
+      - Arn

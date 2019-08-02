@@ -318,7 +318,14 @@ def submit_problem_handler(event, context):
     :param context:
     :return: on success returns a summary of new entries, on error returns error message
     """
-    raw_data = event['body']
+    raw_data = event['body']['data']
+    if not raw_data:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({
+                'message': 'No data given'
+            })
+        }
     problem_type = raw_data['problem_type']
     problem_data, problem_history_data, subgroup_data, people_data = separate_data(raw_data, problem_type)
 
