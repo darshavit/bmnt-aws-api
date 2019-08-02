@@ -24,7 +24,7 @@ Resources:
           Properties:
             Path: /submitRetoolProblem
             Method: POST
-      CodeUri: s3://bmnt-retool-code-bucket/e0e4029b474d9f832782896896c742b3
+      CodeUri: s3://bmnt-retool-code-bucket/b5de2a03a3051d858a31b1cbebbb5596
   submitUpdatedRetoolProblem:
     Type: AWS::Serverless::Function
     Properties:
@@ -35,7 +35,7 @@ Resources:
           Properties:
             Path: /updateRetoolProblem
             Method: POST
-      CodeUri: s3://bmnt-retool-code-bucket/e0e4029b474d9f832782896896c742b3
+      CodeUri: s3://bmnt-retool-code-bucket/b5de2a03a3051d858a31b1cbebbb5596
 Outputs:
   BMNTRetoolAPI:
     Description: Endpoints for BMNT form logic

@@ -9,7 +9,6 @@ Globals:
   Function:
     Runtime: python3.7
     Timeout: 10
-    CodeUri: retool_form_code/
     Environment:
       Variables:
         AIRTABLE_KEY: key3tgXMZ5FNkZZ98
