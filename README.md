@@ -1,26 +1,25 @@
-# AWS
+# BMNT Intake Form API
 
-This is a sample template for AWS - Below is a brief explanation of what we have generated for you:
+This project is based on the hello_world serverless base project.
 
 ```bash
 .
 ├── README.md                   <-- This instructions file
-├── event.json                  <-- API Gateway Proxy Integration event payload
-├── hello_world                 <-- Source code for a lambda function
+├── sourced_problem.json        <-- API Gateway Proxy Integration event payload for sourced problem
+├── curated_problem.json        <-- API Gateway Proxy Integration event payload for curated problem
+├── updated_problem.json        <-- API Gateway Proxy Integration event payload for updated problem
+├── retool_form_code            <-- Source code for a lambda function
 │   ├── __init__.py
 │   ├── app.py                  <-- Lambda function code
 │   ├── requirements.txt        <-- Lambda function code
 ├── template.yaml               <-- SAM Template
-└── tests                       <-- Unit tests
-    └── unit
-        ├── __init__.py
-        └── test_handler.py
+
 ```
 
-## Requirements
+## Requirements For Local Development and Testing
 
 * AWS CLI already configured with Administrator permission
-* [Python 2.7 installed](https://www.python.org/downloads/)
+* [Python 3.7 installed](https://www.python.org/downloads/)
 * [Docker installed](https://www.docker.com/community-edition)
 
 ## Setup process
@@ -30,7 +29,7 @@ This is a sample template for AWS - Below is a brief explanation of what we have
 **Invoking function locally using a local sample payload**
 
 ```bash
-sam local invoke HelloWorldFunction --event event.json
+sam local invoke [submitNewRetoolProblem/submitUpdatedRetoolProblem] --e [json event file]
 ```
 
 **Invoking function locally through local API Gateway**
@@ -39,7 +38,7 @@ sam local invoke HelloWorldFunction --event event.json
 sam local start-api
 ```
 
-If the previous command ran successfully you should now be able to hit the following local endpoint to invoke your function `http://localhost:3000/hello`
+If the previous command ran successfully you should now be able to hit the following local endpoint to invoke your function `http://localhost:3000/[submitRetoolProblem/updateRetoolPRoblem]`
 
 **SAM CLI** is used to emulate both Lambda and API Gateway locally and uses our `template.yaml` to understand how to bootstrap this environment (runtime, where the source code is, etc.) - The following excerpt is what the CLI will read in order to initialize an API and its routes:
 
