@@ -7,7 +7,7 @@ Description: >
 
 Globals:
   Function:
-    Runtime: python3.7
+    Runtime: python3.6
     Timeout: 10
     Environment:
       Variables:

@@ -9,7 +9,6 @@ Globals:
   Function:
     Runtime: python3.7
     Timeout: 10
-    CodeUri: retool_form_code/
     Environment:
       Variables:
         AIRTABLE_KEY: key3tgXMZ5FNkZZ98
@@ -24,7 +23,7 @@ Resources:
           Properties:
             Path: /submitRetoolProblem
             Method: POST
-      CodeUri: s3://bmnt-retool-code-bucket/b5de2a03a3051d858a31b1cbebbb5596
+      CodeUri: s3://bmnt-retool-code-bucket/1b74d660a88dad83613ec3ea204a81c2
   submitUpdatedRetoolProblem:
     Type: AWS::Serverless::Function
     Properties:
@@ -35,7 +34,7 @@ Resources:
           Properties:
             Path: /updateRetoolProblem
             Method: POST
-      CodeUri: s3://bmnt-retool-code-bucket/b5de2a03a3051d858a31b1cbebbb5596
+      CodeUri: s3://bmnt-retool-code-bucket/1b74d660a88dad83613ec3ea204a81c2
 Outputs:
   BMNTRetoolAPI:
     Description: Endpoints for BMNT form logic
