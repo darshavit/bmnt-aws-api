@@ -214,10 +214,11 @@ def handle_subgroup_logic(data, problem_id):
         # Add Problem to subgroup based on whether subgroup is already associated with problems
         if 'Problems' in existing_subgroup_data['fields']:
             subgroup_update_data['Problems'] = existing_subgroup_data['fields']['Problems']
-            subgroup_update_data['Problems'].append(problem_id)
+            if problem_id not in subgroup_update_data['Problems']:
+                subgroup_update_data['Problems'].append(problem_id)
         else:
             subgroup_update_data['Problems'] = [problem_id]
-
+        logger.info('Submitting to Airtable')
         rec_subgroup = update_in_airtable(existing_subgroup_data['id'], 'Sub Group', subgroup_update_data)
         if 'statusCode' in rec_subgroup:
             return False, rec_subgroup
@@ -228,11 +229,11 @@ def handle_subgroup_logic(data, problem_id):
             rec_group = group_table.get(existing_subgroup_data['fields']['Group'][0])
             if 'Organization' in rec_group['fields']:
                 problem_update_data['Organization'] = rec_group['fields']['Organization']
-
+            logger.info('Successfully added Group and Org')
             rec_problem = update_in_airtable(problem_id, 'Problems', problem_update_data)
             if 'statusCode' in rec_problem:
                 return False, rec_problem
-
+        logger.info('Successfully updated subgroup')
         return True, existing_subgroup_data
 
     # New subgroup entry
@@ -244,13 +245,16 @@ def handle_subgroup_logic(data, problem_id):
         }
         # Handle city,state or international physical location
         if 'physical_location' in data:
+            logger.info('adding physical location')
             if ',' in data['physical_location']:
+                logger.info('city, state')
                 city, state = data['physical_location'].split(',')
                 if city:
                     data_subgroup['City'] = city.strip()
                 if state:
                     data_subgroup['State'] = state.strip()
             elif '-' in data['sp_physical_location']:
+                logger.info('international')
                 data_subgroup['State'] = data['physical_location']
 
         rec_subgroup = submit_to_airtable(data_subgroup, 'Sub Group')
@@ -271,25 +275,33 @@ def handle_people_logic(data, problem_id, rec_subgroup):
         # Add this problem to this person based on whether they are already associated with problems
         if 'Problems' in data_people[0]['fields']:
             people_update_data['Problems'] = data_people[0]['fields']['Problems']
-            people_update_data['Problems'].append(problem_id)
+            if problem_id not in people_update_data['Problems']:
+                people_update_data['Problems'].append(problem_id)
+            logger.info('Added Problem List to update data')
         else:
             people_update_data['Problems'] = [problem_id]
+            logger.info('Created New Problem List for update data')
         # Add subgroup/group/org to person if needed
         if 'Sub Group' in data_people[0]['fields']:
+            people_update_data['Sub Group'] = data_people[0]['fields']['Sub Group']
+            logger.info('Added sub group to the update data')
             if rec_subgroup['id'] not in data_people[0]['fields']['Sub Group']:
-                people_update_data['Sub Group'] = data_people[0]['fields']['Sub Group']
                 people_update_data['Sub Group'].append(rec_subgroup['id'])
+                logger.info('Added new subgroup to the update data')
             if 'Group' in rec_subgroup['fields']:
                 if 'Group' not in data_people[0]['fields']:
                     people_update_data['Group'] = rec_subgroup['fields']['Group']
+                    logger.info('Added Group to the update data')
                 else:
                     people_update_data['Group'] = data_people[0]['fields']['Group']
                     for grp in rec_subgroup['fields']['Group']:
                         if grp not in people_update_data['Group']:
                             people_update_data['Group'].append(grp)
+                    logger.info('Added new groups to the update data')
                 group_table = Airtable(constants.AIRTABLE_BASE_KEY, 'Group', api_key=os.environ['AIRTABLE_KEY'])
                 if 'Organization' in data_people[0]['fields']:
                     people_update_data['Organization'] = data_people[0]['fields']['Organization']
+                    logger.info('Added Organization to the update data')
                 else:
                     people_update_data['Organization'] = []
                 for grp in people_update_data['Group']:
@@ -298,13 +310,17 @@ def handle_people_logic(data, problem_id, rec_subgroup):
                         for org in rec_group['fields']['Organization']:
                             if org not in people_update_data['Organization']:
                                 people_update_data['Organization'].append(org)
+                        logger.info('Added organization to the update data')
                 if not people_update_data['Organization']:
                     people_update_data.pop('Organization')
+                    logger.info('Removing organization from update data because there are none')
         rec_people = update_in_airtable(data_people[0]['id'], 'People', people_update_data)
+        logger.info('Updated record in airtable: {}'.format(rec_people))
         if 'statusCode' in rec_people:
             return False, rec_people
         return True, rec_people
     else:
+        logger.info('Creating new person entry {}'.format(data))
         data_people = {'email': data['sponsor_email']}
         if len(data['sponsor_name'].split(' ', 1)) > 1:
             data_people['first_name'] = data['sponsor_name'].split(' ', 1)[0]
@@ -327,6 +343,7 @@ def handle_people_logic(data, problem_id, rec_subgroup):
         if 'sponsor_division' in data:
             data_people['Division'] = data['sponsor_division']
         rec_people = submit_to_airtable(data_people, 'People')
+        logger.info('New person entry {}'.format(rec_people))
         if 'statusCode' in rec_people:
             return False, rec_people
         return True, rec_people
