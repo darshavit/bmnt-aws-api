@@ -192,3 +192,15 @@ Finally, we have the submitSourced, submitCurated, submitUpdated queries. These 
 * For Body, specify JSON in the dropdown
 * make a key "data", whose value is "{{ sourcedProblem.data }}" or "{{curatedProblem.data}} " or "{{ updatedProblem.data }}" depending on which query you are in
 
+### CloudWatch Logs
+
+I've added lots of logging statements in the lambda code to make it easier to pinpoint where things are going wrong. These are the lines "log.info" and "log.warn" in the code.
+These files can be found in AWS CloudWatch. Go to your AWS console, and in the Find Services box search for CloudWatch and click it.
+* On the left hand side of the page in CloudWatch, click on "Logs"
+* In the Logs section, click on the lambda function which is having issues.
+* Each of the records in these lists represents a time a user interacted with the form. You can use the search box at the top to search for the specific error message, and the corresponding log.
+* Read the log and look for where the last [INFO] or [WARN] logging statement was made (towards bottom of list). Between here and the next logging statement is the last place in the code we made it to successfully.
+* If there are no [INFO] or [WARN] statements...
+* Make sure your API is deployed
+* Make sure the link is correct in the Retool queries
+* Hope for the best and try again
