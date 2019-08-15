@@ -80,11 +80,12 @@ def determine_data_to_update_for_problem(problem_id, data_new):
     logger.info('## Determining which fields need to be updated for {}'.format(problem_id))
     table = Airtable(constants.AIRTABLE_BASE_KEY, 'Problems', api_key=os.environ['AIRTABLE_KEY'])
     data_old = table.get(problem_id)
+    logger.info('Data From Retool: {}'.format(data_old))
     data_to_update = {}
     for field, value in data_new.items():
         if field not in data_old:
             data_to_update[field] = value
-        if data_old[field] != data_new[field]:
+        elif data_old['fields'][field] != data_new[field]:
             data_to_update[field] = value
 
     if not data_to_update:
@@ -118,6 +119,13 @@ def submit_to_airtable(data, table_name):
         }
     logger.info('## Successfully submitted to {} Table. New id: {}'.format(table_name, rec['id']))
     return rec
+
+
+def update_problem_in_airtable(rec_id, data):
+    updated_rec = update_in_airtable(rec_id, 'Problems', data)
+    if 'statusCode' in updated_rec:
+        return False, updated_rec
+    return True, updated_rec
 
 
 def update_in_airtable(rec_id, table_name, data):
@@ -382,7 +390,10 @@ def submit_problem_handler(event, context):
     try:
         problem_type = raw_data['problem_type']
         problem_data, problem_history_data, subgroup_data, people_data = separate_data(raw_data, problem_type)
-
+        logger.info('Problem Data: {}'.format(problem_data))
+        logger.info('Problem History Data: {}'.format(problem_history_data))
+        logger.info('Subgroup Data: {}'.format(subgroup_data))
+        logger.info('People Data: {}'.format(people_data))
         # Problem Table Submit
         success, rec_problem = submit_to_problem_table(problem_data, problem_type)
         if not success:
@@ -435,7 +446,7 @@ def updated_problem_handler(event, context):
     :return:
     """
     try:
-        raw_data = json.loads(event['body']['data'])
+        raw_data = json.loads(event['body'])['data']
         logger.info('Received data was: {}'.format(raw_data))
         if not raw_data:
             return {
@@ -463,7 +474,7 @@ def updated_problem_handler(event, context):
             return data_to_update
 
         # Problem Table submit
-        success, updated_problem = update_in_airtable(problem_id, 'Problems', data_to_update)
+        success, updated_problem = update_problem_in_airtable(problem_id, data_to_update)
         if not success:
             return updated_problem
 
@@ -483,12 +494,12 @@ def updated_problem_handler(event, context):
             if not success:
                 return rec_subgroup
 
-        # Handle people if need be
-        if 'sponsor_email' in data_to_update:
-            logger.info('## Need to update people for problem')
-            success, rec_people = handle_people_logic(people_data, problem_id)
-            if not success:
-                return rec_people
+            # Handle people if need be
+            if 'sponsor_email' in data_to_update and rec_subgroup:
+                logger.info('## Need to update people for problem')
+                success, rec_people = handle_people_logic(people_data, problem_id, rec_subgroup)
+                if not success:
+                    return rec_people
 
         return {
             'statusCode': 200,
