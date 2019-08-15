@@ -1,209 +1,194 @@
 # BMNT Intake Form API
 
-This project is based on the hello_world serverless base project.
+This documents the Retool Form and AWS Lambda code
 
 ```bash
 .
 ├── README.md                   <-- This instructions file
-├── sourced_problem.json        <-- API Gateway Proxy Integration event payload for sourced problem
-├── curated_problem.json        <-- API Gateway Proxy Integration event payload for curated problem
-├── updated_problem.json        <-- API Gateway Proxy Integration event payload for updated problem
 ├── retool_form_code            <-- Source code for a lambda function
-│   ├── __init__.py
-│   ├── app.py                  <-- Lambda function code
-│   ├── requirements.txt        <-- Lambda function code
-├── template.yaml               <-- SAM Template
-
+│   ├── bmntenv/                <-- virtual envrionment that contains the dependencies
+│   ├── lambdacode.zip          <-- zip file that contains all the code/dependencies necessary to run on AWS Lambda
+├── .gitignore                  <-- gitignore
+├── app.py                      <-- python code for both lambda functions that implements the logic of submitting to retool
+├── constants.py                <-- file that defines lots of constants. if you need to make a change, it's probably here
 ```
 
-## Requirements For Local Development and Testing
+## Starting From Scratch
 
-* AWS CLI already configured with Administrator permission
-* [Python 3.7 installed](https://www.python.org/downloads/)
-* [Docker installed](https://www.docker.com/community-edition)
+#### Setting up your account
 
-## Setup process
+Register for an AWS Free Tier Account at [AWS](https://aws.amazon.com).
+For this project, the only services we will be using are Lambda, API Gateway, and CloudWatch for logging.
 
-### Local development
+The following steps are modified from a tutorial that can be found here. 
+Please refer back to [this](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-create-api-as-simple-proxy-for-lambda.html) for further information
 
-**Invoking function locally using a local sample payload**
+##### Part 1. Setting up the lambda functions
 
-```bash
-sam local invoke [submitNewRetoolProblem/submitUpdatedRetoolProblem] --e [json event file]
+    1. Sign in to the Lambda console at https://console.aws.amazon.com/lambda.
+    
+    2. On the AWS navigation bar, choose a region (for example, US East (N. Virginia)).
+    
+        **Note**
+    
+        Note the region where you create the Lambda function. You'll need it when you create the API.
+        
+        Choose Functions in the navigation pane.
+    
+    3. Choose Create function.
+    
+    4. Choose Author from scratch.
+    
+    5. Under Basic information, do the following:
+    
+        a. In Function name, enter submitRetoolProblemToAirtable.
+    
+        b. From the Runtime dropdown list, choose python 3.6.
+    
+        c. Under Permissions, expand Choose or create an execution role. From the Execution role dropdown list, choose Create new role from AWS policy templates.
+    
+        d. In Role name, enter GetStartedLambdaBasicExecutionRole.
+    
+        e. Leave the Policy templates field blank.
+    
+        f. Choose Create function.
+    
+    6. Repeat steps 1-5, but this time use a Function name of updateRetoolProblemInAirtable, and reuse the role you just made in step 5.c and 5.d
+    
+    At this point, you should have two lambda functions setup. Verify that you can see these functions in the AWS Lambda console -> functions.
+    
+    Now we wil upload the code for these functions.
+    
+    1. Click on one of the functions, which should take you to a detail page of the function.
+    2. Under the Function Code section, make sure the following values are as below
+      * Code entry type: Upload a .zip package
+      * Runtime: python3.6
+      * Handler: app.submit_problem_handler, or app.updated_problem_handler depending on which lambda function you are configuring
+      * Function Package: upload the lambdacode.zip file
+      
+    Finally, click save in the upper right hand corner. Once the save button stops loading, you are good to go.
+        
+##### Part 2. Setting up the API
+
+    1. Sign in to the API Gateway console at https://console.aws.amazon.com/apigateway.
+
+    2. If this is your first time using API Gateway, you see a page that introduces you to the features of the service. Choose Get Started. When the Create Example API popup appears, choose OK.
+
+        If this is not your first time using API Gateway, choose Create API.
+
+    3. Create an empty API as follows:
+
+        a. Under Choose the protocol, choose REST.
+
+        b. Under Create new API, choose New API.
+
+        c. Under Settings:
+
+            For API name, enter BMNTIntakeApi.
+
+            If desired, enter a description in the Description field; otherwise, leave it empty.
+
+            Leave Endpoint Type set to Regional.
+
+        d. Choose Create API.
+
+    4. Create the submitproblem and updateproblem resource as follows (do these steps for both):
+
+        a. Choose the root resource (/) in the Resources tree.
+
+        b. Choose Create Resource from the Actions dropdown menu.
+
+        c. Leave Configure as proxy resource unchecked.
+
+        d. For Resource Name, enter submitproblem or updateproblem.
+
+        e. Leave Resource Path set to /submitproblem or /updateproblem.
+
+        f. Leave Enable API Gateway CORS unchecked.
+
+        g. Choose Create Resource.
+
+    5. In a proxy integration, the entire request is sent to the backend Lambda function as-is, via a catch-all ANY method that represents any HTTP method. The actual HTTP method is specified by the client at run time. The ANY method allows you to use a single API method setup for all of the supported HTTP methods: DELETE, GET, HEAD, OPTIONS, PATCH, POST, and PUT.
+
+    6. To set up the ANY method, do the following (do this for both submitproblem and updateproblem):
+
+        a. In the Resources list, choose /submitproblem or /updateproblem.
+
+        b. In the Actions menu, choose Create method.
+
+        c. Choose ANY from the dropdown menu, and choose the checkmark icon
+
+        d. Leave the Integration type set to Lambda Function.
+
+        e. Choose Use Lambda Proxy integration.
+
+        f. From the Lambda Region dropdown menu, choose the region where you created the submitRetoolProblemToAirtable and updateRetoolProblemInAirtable Lambda function.
+
+        g. In the Lambda Function field, type any character and choose appropriate lambda function from the dropdown menu.
+
+        h. Leave Use Default Timeout checked.
+
+        i. Choose Save.
+
+        j. Choose OK when prompted with Add Permission to Lambda Function.
+        
+##### Part 3. Deploying the API
+
+    Deploy the API in the API Gateway console
+
+    1. Choose Deploy API from the Actions dropdown menu.
+
+    2. For Deployment stage, choose [new stage].
+
+    3. For Stage name, enter test.
+
+    4. If desired, enter a Stage description.
+
+    5. If desired, enter a Deployment description.
+
+    6. Choose Deploy.
+
+    7. Note the API's Invoke URL.
+    
+    This URL will be used in retool in the submitSourced, submitCurated, and submitUpdated queries
+    
+    
+At this point, everything in AWS is set up and ready to go. 
+If you need to change things in the code because fields have been updated in airtable, or something is going wrong, here is what you should do.
+* Make the necessary code changes. These should only happen in app.py and constants.py.
+* Replace these files in the lambdacode.zip file. If you open up the zip, replace the existing versions with the updated versions, and zip the folder again you will be good to go
+* Alternatively, if you're good with the command line: 
+```bash 
+User$ zip -g lambdacode.zip ../app.py
 ```
+* Reupload this zip file to both lambda functions as you did in the last steps of part 1
 
-**Invoking function locally through local API Gateway**
+If you only needed to make changes in the code, that is all you have to do.
 
-```bash
-sam local start-api
-```
+## Retool Form
 
-If the previous command ran successfully you should now be able to hit the following local endpoint to invoke your function `http://localhost:3000/[submitRetoolProblem/updateRetoolPRoblem]`
+The retool form structure has not changed too much since the previous version. The main thing to keep up to date with here is the labels and values for the dropdown fields.
+This is the most common cause for an error returned by the api. 
 
-**SAM CLI** is used to emulate both Lambda and API Gateway locally and uses our `template.yaml` to understand how to bootstrap this environment (runtime, where the source code is, etc.) - The following excerpt is what the CLI will read in order to initialize an API and its routes:
+The other place where you will most likely need to make changes is in the javascript queries:
+* sourcedProblem, curatedProblem, updatedProblem
 
-```yaml
-...
-Events:
-    HelloWorld:
-        Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-        Properties:
-            Path: /hello
-            Method: get
-```
+This is straightforward code that takes the information provided in retool, and packages it as key-value pairs for the api we just set up.
+If a field name changes in airtable, it will need to be changed in one or all of these queries. This is case sensitive. 
+* Ex 1: If the field "employee_sourced_curated" changes to "employee", you would need to change the place in the code where it says "data.employee_sourced_curated = **_employee_sourced_curated.value" to "data.employee = **_employee_sourced_curated.value"
+* Ex 2: If the field "sponsor_name" change to "Sponsor Name", you would need to change the place in the code where it says "data.sponsor_name = **_sponsor_name.value" to "data["Sponsor Name"] = **_sponsor_name.value"
 
-## Packaging and deployment
+The queries problemSearch, listSubGroupS, listSubGroupC, listSubgroupU should not require any changes. If those queries break...
+* Check to make sure the table id (the part starting with tbl) is correct
+* Check to make sure airtable hasn't change the way their formulas work (the filterByFormula value)
+Those are the only things I have ever had to change in those queries. 
 
-AWS Lambda Python runtime requires a flat folder with all dependencies including the application. SAM will use `CodeUri` property to know where to look up for both application and dependencies:
-
-```yaml
-...
-    HelloWorldFunction:
-        Type: AWS::Serverless::Function
-        Properties:
-            CodeUri: hello_world/
-            ...
-```
-
-Firstly, we need a `S3 bucket` where we can upload our Lambda functions packaged as ZIP before we deploy anything - If you don't have a S3 bucket to store code artifacts then this is a good time to create one:
-
-```bash
-aws s3 mb s3://BUCKET_NAME
-```
-
-Next, run the following command to package our Lambda function to S3:
-
-```bash
-sam package \
-    --output-template-file packaged.yaml \
-    --s3-bucket REPLACE_THIS_WITH_YOUR_S3_BUCKET_NAME
-```
-
-Next, the following command will create a Cloudformation Stack and deploy your SAM resources.
-
-```bash
-sam deploy \
-    --template-file packaged.yaml \
-    --stack-name aws \
-    --capabilities CAPABILITY_IAM
-```
-
-> **See [Serverless Application Model (SAM) HOWTO Guide](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-quick-start.html) for more details in how to get started.**
-
-After deployment is complete you can run the following command to retrieve the API Gateway Endpoint URL:
-
-```bash
-aws cloudformation describe-stacks \
-    --stack-name aws \
-    --query 'Stacks[].Outputs[?OutputKey==`HelloWorldApi`]' \
-    --output table
-``` 
-
-## Fetch, tail, and filter Lambda function logs
-
-To simplify troubleshooting, SAM CLI has a command called sam logs. sam logs lets you fetch logs generated by your Lambda function from the command line. In addition to printing the logs on the terminal, this command has several nifty features to help you quickly find the bug.
-
-`NOTE`: This command works for all AWS Lambda functions; not just the ones you deploy using SAM.
-
-```bash
-sam logs -n HelloWorldFunction --stack-name aws --tail
-```
-
-You can find more information and examples about filtering Lambda function logs in the [SAM CLI Documentation](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-logging.html).
-
-## Testing
-
-
-Next, we install test dependencies and we run `pytest` against our `tests` folder to run our initial unit tests:
-
-```bash
-pip install pytest pytest-mock --user
-python -m pytest tests/ -v
-```
-
-## Cleanup
-
-In order to delete our Serverless Application recently deployed you can use the following AWS CLI Command:
-
-```bash
-aws cloudformation delete-stack --stack-name aws
-```
-
-## Bringing to the next level
-
-Here are a few things you can try to get more acquainted with building serverless applications using SAM:
-
-### Learn how SAM Build can help you with dependencies
-
-* Uncomment lines on `app.py`
-* Build the project with ``sam build --use-container``
-* Invoke with ``sam local invoke HelloWorldFunction --event event.json``
-* Update tests
-
-### Create an additional API resource
-
-* Create a catch all resource (e.g. /hello/{proxy+}) and return the name requested through this new path
-* Update tests
-
-### Step-through debugging
-
-* **[Enable step-through debugging docs for supported runtimes]((https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-using-debugging.html))**
-
-Next, you can use AWS Serverless Application Repository to deploy ready to use Apps that go beyond hello world samples and learn how authors developed their applications: [AWS Serverless Application Repository main page](https://aws.amazon.com/serverless/serverlessrepo/)
-
-# Appendix
-
-## Building the project
-
-[AWS Lambda requires a flat folder](https://docs.aws.amazon.com/lambda/latest/dg/lambda-python-how-to-create-deployment-package.html) with the application as well as its dependencies in  deployment package. When you make changes to your source code or dependency manifest,
-run the following command to build your project local testing and deployment:
-
-```bash
-sam build
-```
-
-If your dependencies contain native modules that need to be compiled specifically for the operating system running on AWS Lambda, use this command to build inside a Lambda-like Docker container instead:
-```bash
-sam build --use-container
-```
-
-By default, this command writes built artifacts to `.aws-sam/build` folder.
-
-## SAM and AWS CLI commands
-
-All commands used throughout this document
-
-```bash
-# Generate event.json via generate-event command
-sam local generate-event apigateway aws-proxy > event.json
-
-# Invoke function locally with event.json as an input
-sam local invoke HelloWorldFunction --event event.json
-
-# Run API Gateway locally
-sam local start-api
-
-# Create S3 bucket
-aws s3 mb s3://BUCKET_NAME
-
-# Package Lambda function defined locally and upload to S3 as an artifact
-sam package \
-    --output-template-file packaged.yaml \
-    --s3-bucket REPLACE_THIS_WITH_YOUR_S3_BUCKET_NAME
-
-# Deploy SAM template as a CloudFormation stack
-sam deploy \
-    --template-file packaged.yaml \
-    --stack-name aws \
-    --capabilities CAPABILITY_IAM
-
-# Describe Output section of CloudFormation stack previously created
-aws cloudformation describe-stacks \
-    --stack-name aws \
-    --query 'Stacks[].Outputs[?OutputKey==`HelloWorldApi`]' \
-    --output table
-
-# Tail Lambda function Logs using Logical name defined in SAM Template
-sam logs -n HelloWorldFunction --stack-name aws --tail
-```
+Finally, we have the submitSourced, submitCurated, submitUpdated queries. These call the apis that were created above.
+* All these queries should be making POST requests
+* Make sure the link in the URL box matches the link given to you when you deployed the API.
+* For the submitSourced and submitCurated queries, append "submitproblem" to the url (last part should be /test/submitproblem)
+* For the submitUpdated query, append "updateproblem" to the url (last part should be /test/updateproblem)
+* For Headers, make sure the pair "Content-Type" + "application/json" is included
+* For Body, specify JSON in the dropdown
+* make a key "data", whose value is "{{ sourcedProblem.data }}" or "{{curatedProblem.data}} " or "{{ updatedProblem.data }}" depending on which query you are in
 
