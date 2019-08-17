@@ -1,6 +1,6 @@
 import json
 import os
-import constants
+import intake_form_constants
 import logging
 import datetime
 from airtable import Airtable
@@ -23,13 +23,13 @@ def separate_data(raw_data, problem_type):
 
     logger.info('## Organizing Raw data from retool')
     for field, value in raw_data.items():
-        if field in constants.ALL_FIELDS[problem_type]:
+        if field in intake_form_constants.ALL_FIELDS[problem_type]:
             problem_data[field] = value
-        if field in constants.ALL_FIELDS['problem_history']:
+        if field in intake_form_constants.ALL_FIELDS['problem_history']:
             problem_history_data[field] = value
-        if field in constants.ALL_FIELDS['subgroup']:
+        if field in intake_form_constants.ALL_FIELDS['subgroup']:
             subgroup_data[field] = value
-        if field in constants.ALL_FIELDS['people']:
+        if field in intake_form_constants.ALL_FIELDS['people']:
             people_data[field] = value
     logger.info('## Organized data by table')
     return problem_data, problem_history_data, subgroup_data, people_data
@@ -51,11 +51,11 @@ def check_data_from_retool(data, all_fields, table_name, form, required_fields=N
     for field, value in data.items():
         # Make sure field is valid
         if field not in all_fields:
-            logger.warning(constants.INVALID_FIELD.format(field, table_name))
+            logger.warning(intake_form_constants.INVALID_FIELD.format(field, table_name))
             return {
                 'statusCode': 400,
                 'body': json.dumps({
-                    'message': constants.INVALID_FIELD.format(field, table_name),
+                    'message': intake_form_constants.INVALID_FIELD.format(field, table_name),
                     'received_data': data
                 })
             }
@@ -63,11 +63,11 @@ def check_data_from_retool(data, all_fields, table_name, form, required_fields=N
         if required_fields:
             if field in required_fields:
                 if not value:
-                    logger.warning(constants.REQUIRED_FIELD_IS_NULL.format(field, form))
+                    logger.warning(intake_form_constants.REQUIRED_FIELD_IS_NULL.format(field, form))
                     return {
                         'statusCode': 400,
                         'body': json.dumps({
-                            'message': constants.REQUIRED_FIELD_IS_NULL.format(field, form),
+                            'message': intake_form_constants.REQUIRED_FIELD_IS_NULL.format(field, form),
                             'received_data': data
                         })
                     }
@@ -78,7 +78,7 @@ def check_data_from_retool(data, all_fields, table_name, form, required_fields=N
 
 def determine_data_to_update_for_problem(problem_id, data_new):
     logger.info('## Determining which fields need to be updated for {}'.format(problem_id))
-    table = Airtable(constants.AIRTABLE_BASE_KEY, 'Problems', api_key=os.environ['AIRTABLE_KEY'])
+    table = Airtable(intake_form_constants.AIRTABLE_BASE_KEY, 'Problems', api_key=os.environ['AIRTABLE_KEY'])
     data_old = table.get(problem_id)
     logger.info('Data From Retool: {}'.format(data_old))
     data_to_update = {}
@@ -106,14 +106,14 @@ def submit_to_airtable(data, table_name):
     :return: on success returns new entry, on error returns error message
     """
     logger.info('## Attempting to submit to {} Table. data: {}'.format(table_name, data))
-    table = Airtable(constants.AIRTABLE_BASE_KEY, table_name, api_key=os.environ['AIRTABLE_KEY'])
+    table = Airtable(intake_form_constants.AIRTABLE_BASE_KEY, table_name, api_key=os.environ['AIRTABLE_KEY'])
     rec = table.insert(data)
     if 'id' not in rec:
-        logger.warning(constants.UNABLE_TO_CREATE_RECORD.format(rec))
+        logger.warning(intake_form_constants.UNABLE_TO_CREATE_RECORD.format(rec))
         return {
             'statusCode': 400,
             'body': json.dumps({
-                'message': constants.UNABLE_TO_CREATE_RECORD.format(rec),
+                'message': intake_form_constants.UNABLE_TO_CREATE_RECORD.format(rec),
                 'received_data': data
             })
         }
@@ -137,14 +137,14 @@ def update_in_airtable(rec_id, table_name, data):
     :return: on success returns updated entry, on error returns error message
     """
     logger.info('## Attempting to update rec_id {} in table {} with data {}'.format(rec_id, table_name, data))
-    table = Airtable(constants.AIRTABLE_BASE_KEY, table_name, api_key=os.environ['AIRTABLE_KEY'])
+    table = Airtable(intake_form_constants.AIRTABLE_BASE_KEY, table_name, api_key=os.environ['AIRTABLE_KEY'])
     updated_rec = table.update(rec_id, data)
     if 'id' not in updated_rec:
-        logger.warning(constants.UNABLE_TO_UPDATE_RECORD.format(rec_id, updated_rec))
+        logger.warning(intake_form_constants.UNABLE_TO_UPDATE_RECORD.format(rec_id, updated_rec))
         return {
             'statusCode': 400,
             'body': json.dumps({
-                'message': constants.UNABLE_TO_UPDATE_RECORD.format(rec_id, updated_rec),
+                'message': intake_form_constants.UNABLE_TO_UPDATE_RECORD.format(rec_id, updated_rec),
                 'received_date': data
             })
         }
@@ -159,7 +159,7 @@ def delete_from_airtable(rec_id, table_name):
     :param table_name: from this table
     """
     logger.info('## Deleting {} from {}'.format(rec_id, table_name))
-    table = Airtable(constants.AIRTABLE_BASE_KEY, table_name, api_key=os.environ['AIRTABLE_KEY'])
+    table = Airtable(intake_form_constants.AIRTABLE_BASE_KEY, table_name, api_key=os.environ['AIRTABLE_KEY'])
     table.delete(rec_id)
     logger.info('## Deleted Successfully')
 
@@ -172,10 +172,10 @@ def submit_to_problem_table(data, problem_type):
     :return: on success returns (True, new_entry), on error returns (False, err_msg)
     """
     data_problem = check_data_from_retool(data,
-                                          constants.ALL_FIELDS[problem_type],
+                                          intake_form_constants.ALL_FIELDS[problem_type],
                                           'Problems',
                                           problem_type,
-                                          constants.REQUIRED_FIELDS[problem_type])
+                                          intake_form_constants.REQUIRED_FIELDS[problem_type])
 
     if 'statusCode' in data_problem:
         return False, data_problem
@@ -194,15 +194,15 @@ def submit_to_problem_history_table(data, problem_id, problem_type):
     }
     if problem_type == 'sourced':
         data_problem_history['State'] = 'Sourced (no BMNT)'
-        data_problem_history['Pipeline Stage'] = constants.STATE_TO_PIPELINE['Sourced (no BMNT)']
+        data_problem_history['Pipeline Stage'] = intake_form_constants.STATE_TO_PIPELINE['Sourced (no BMNT)']
         logger.info(data_problem_history)
     elif problem_type == 'curated':
         data_problem_history['State'] = data['State']
-        data_problem_history['Pipeline Stage'] = constants.STATE_TO_PIPELINE[data['State']]
+        data_problem_history['Pipeline Stage'] = intake_form_constants.STATE_TO_PIPELINE[data['State']]
         data_problem_history['date_curated'] = str(datetime.date.today())
     else:
         data_problem_history['State'] = data['State']
-        data_problem_history['Pipeline Stage'] = constants.STATE_TO_PIPELINE[data['State']]
+        data_problem_history['Pipeline Stage'] = intake_form_constants.STATE_TO_PIPELINE[data['State']]
 
     rec_problem_history = submit_to_airtable(data_problem_history, 'Problem History')
     if 'statusCode' in rec_problem_history:
@@ -212,7 +212,7 @@ def submit_to_problem_history_table(data, problem_id, problem_type):
 
 
 def handle_subgroup_logic(data, problem_id):
-    subgroup_table = Airtable(constants.AIRTABLE_BASE_KEY, 'Sub Group', api_key=os.environ['AIRTABLE_KEY'])
+    subgroup_table = Airtable(intake_form_constants.AIRTABLE_BASE_KEY, 'Sub Group', api_key=os.environ['AIRTABLE_KEY'])
 
     # Existing subgroup
     if 'sponsor_subgroup' in data:
@@ -233,7 +233,7 @@ def handle_subgroup_logic(data, problem_id):
         # Add Group and Organization to Problem if needed
         if 'Group' in existing_subgroup_data['fields']:
             problem_update_data = {'Group': existing_subgroup_data['fields']['Group']}
-            group_table = Airtable(constants.AIRTABLE_BASE_KEY, 'Group', api_key=os.environ['AIRTABLE_KEY'])
+            group_table = Airtable(intake_form_constants.AIRTABLE_BASE_KEY, 'Group', api_key=os.environ['AIRTABLE_KEY'])
             rec_group = group_table.get(existing_subgroup_data['fields']['Group'][0])
             if 'Organization' in rec_group['fields']:
                 problem_update_data['Organization'] = rec_group['fields']['Organization']
@@ -274,7 +274,7 @@ def handle_subgroup_logic(data, problem_id):
 
 
 def handle_people_logic(data, problem_id, rec_subgroup):
-    people_table = Airtable(constants.AIRTABLE_BASE_KEY, 'People', api_key=os.environ['AIRTABLE_KEY'])
+    people_table = Airtable(intake_form_constants.AIRTABLE_BASE_KEY, 'People', api_key=os.environ['AIRTABLE_KEY'])
     data_people = people_table.search('email', data['sponsor_email'])
     # Existing Person
     if len(data_people):
@@ -306,7 +306,7 @@ def handle_people_logic(data, problem_id, rec_subgroup):
                         if grp not in people_update_data['Group']:
                             people_update_data['Group'].append(grp)
                     logger.info('Added new groups to the update data')
-                group_table = Airtable(constants.AIRTABLE_BASE_KEY, 'Group', api_key=os.environ['AIRTABLE_KEY'])
+                group_table = Airtable(intake_form_constants.AIRTABLE_BASE_KEY, 'Group', api_key=os.environ['AIRTABLE_KEY'])
                 if 'Organization' in data_people[0]['fields']:
                     people_update_data['Organization'] = data_people[0]['fields']['Organization']
                     logger.info('Added Organization to the update data')
@@ -337,7 +337,7 @@ def handle_people_logic(data, problem_id, rec_subgroup):
             data_people['first_name'] = data['sponsor_name']
         if 'Group' in rec_subgroup['fields']:
             data_people['Group'] = rec_subgroup['fields']['Group']
-            group_table = Airtable(constants.AIRTABLE_BASE_KEY, 'Group', api_key=os.environ['AIRTABLE_KEY'])
+            group_table = Airtable(intake_form_constants.AIRTABLE_BASE_KEY, 'Group', api_key=os.environ['AIRTABLE_KEY'])
             data_people['Organization'] = []
             for grp in data_people['Group']:
                 rec_group = group_table.get(grp)
@@ -419,13 +419,13 @@ def submit_problem_handler(event, context):
             'body': json.dumps({
                 'message': '{} problem submitted successfully!'.format(problem_type),
                 'link_problem': '<a href="https://airtable.com/{}/{}"> Link to problem in airtable</a>'.format(
-                    constants.PROBLEM_TABLE_ID, rec_problem['id']),
+                    intake_form_constants.PROBLEM_TABLE_ID, rec_problem['id']),
                 'link_problem_history': '<a href="https://airtable.com/{}/{}"> Link to problem history table</a>'.format(
-                    constants.PROBLEM_HISTORY_TABLE_ID, rec_problem_history['id']),
+                    intake_form_constants.PROBLEM_HISTORY_TABLE_ID, rec_problem_history['id']),
                 'link_subgroup': '<a href="https://airtable.com/{}/{}"> Link to subgroup</a>'.format(
-                    constants.SUBGROUP_TABLE_ID, rec_subgroup['id']),
+                    intake_form_constants.SUBGROUP_TABLE_ID, rec_subgroup['id']),
                 'link_people': '<a href="https://airtable.com/{}/{}"> Link to person</a>'.format(
-                    constants.PEOPLE_TABLE_ID, rec_people['id'])
+                    intake_form_constants.PEOPLE_TABLE_ID, rec_people['id'])
             })
         }
     except Exception as e:
@@ -506,7 +506,7 @@ def updated_problem_handler(event, context):
             'body': json.dumps({
                 'message': 'Updated problem {} successfully'.format(problem_id),
                 'link_problem': '<a href="https://airtable.com/{}/{}"> Link to problem in airtable</a>'.format(
-                    constants.PROBLEM_TABLE_ID, problem_id)
+                    intake_form_constants.PROBLEM_TABLE_ID, problem_id)
             })
         }
 
